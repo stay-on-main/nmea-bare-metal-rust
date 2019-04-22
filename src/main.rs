@@ -279,6 +279,11 @@ fn nmea_msg_skip_msg_type(msg: &[u8]) -> Option<(&[u8], Msg)>
     }
 }
 
+fn parse_gga(msg: &[u8])
+{
+
+}
+
 fn nmea_parse_msg(msg: &[u8]) -> bool {
     let msg = match nmea_msg_skip_header(msg) {
         Some(m) => m,
@@ -320,7 +325,21 @@ fn nmea_parse_msg(msg: &[u8]) -> bool {
 
     println!("{:#?}", msg_type);
 
-    
+    if msg.len() < 1 {
+        return false;
+    }
+
+    if msg[0] != b',' {
+        return false;
+    }
+
+    let msg = &msg[1..];
+
+    match msg_type {
+        Msg::GGA => parse_gga(msg),
+        _ => println!("not implemented"),
+    }
+
     println!("{}", str::from_utf8(msg).unwrap());
     return true;
 }
