@@ -278,10 +278,34 @@ fn nmea_msg_skip_msg_type(msg: &[u8]) -> Option<(&[u8], Msg)>
         None => return None,
     }
 }
+/*
+struct Splitter<'a> {
+    data: &'a[u8],
+    delim: u8,
+}
 
+impl <'a> Splitter<'a> {
+    fn new(data: &'a[u8], delim: u8) -> My {
+        My { data: data, delim: delim}
+    }
+
+    fn next(&mut self) -> Option<&[u8]> {
+        for i in 0..self.data.len() {
+            if self.data[i] == self.delim {
+                let res = Some(&self.data[0..i]);
+                self.data = &self.data[(i + 1)..];
+                return res;
+            }
+        }
+
+        return None;
+    }
+}
+*/
 fn parse_gga(msg: &[u8])
 {
-
+    let mut iter = msg.split(|num| *num == b',');
+    println!("{}", str::from_utf8(iter.next().unwrap()).unwrap());
 }
 
 fn nmea_parse_msg(msg: &[u8]) -> bool {
@@ -346,8 +370,8 @@ fn nmea_parse_msg(msg: &[u8]) -> bool {
 
 fn main() {
     //println!("{}", ascii_char_to_u32("12345".as_bytes()).unwrap());
-    //nmea_parse_msg("$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n".as_bytes());
-    nmea_parse_msg("$GPRMC,092751.000,A,5321.6802,N,00630.3371,W,0.06,31.66,280511,,,A*45\r\n".as_bytes());
+    nmea_parse_msg("$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47\r\n".as_bytes());
+    //nmea_parse_msg("$GPRMC,092751.000,A,5321.6802,N,00630.3371,W,0.06,31.66,280511,,,A*45\r\n".as_bytes());
     println!("Hello, world!");
 }
 
