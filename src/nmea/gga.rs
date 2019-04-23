@@ -1,5 +1,29 @@
 use std::str;
 
+enum Fix
+{
+    0 = invalid
+    1 = GPS fix (SPS)
+    2 = DGPS fix
+    3 = PPS fix
+    4 = Real Time Kinematic
+    5 = Float RTK
+    6 = estimated (dead reckoning) (2.3 feature)
+    7 = Manual input mode
+    8 = Simulation mode
+}
+
+struct Gga {
+    time: u32,
+    lat: Option<u32>,
+    lon: Option<u32>
+    fix: Option<Fix>,
+    satellites: Option<u32>,
+    hdop: Option<u32>,
+    altitude: Option<u32>,
+    geoid: Option<u32>,
+}
+
 pub fn parse_gga(msg: &[u8])
 {
     let mut iter = msg.split(|num| *num == b',');
