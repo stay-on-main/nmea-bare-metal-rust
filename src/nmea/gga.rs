@@ -1,5 +1,4 @@
-use std::str;
-
+/*
 enum Fix
 {
     0 = invalid
@@ -12,83 +11,163 @@ enum Fix
     7 = Manual input mode
     8 = Simulation mode
 }
+*/
 
-struct Gga {
-    time: u32,
-    lat: Option<u32>,
-    lon: Option<u32>
-    fix: Option<Fix>,
+#[derive(Debug)]
+pub struct Gga {
+    time: Option<u32>,
+    lat: Option<f32>,
+    lon: Option<f32>,
+    fix_quality: Option<u32>,
     satellites: Option<u32>,
-    hdop: Option<u32>,
-    altitude: Option<u32>,
-    geoid: Option<u32>,
+    hdop: Option<f32>,
+    altitude: Option<f32>,
+    geoid: Option<f32>,
 }
 
-pub fn parse_gga(msg: &[u8])
+fn ascii_to_f32(str: &[u8]) -> Option<f32>
 {
-    let mut iter = msg.split(|num| *num == b',');
+    let mut num: u32 = 0;
+    let mut frac: u32 = 0;
+    let mut frac_flag = false;
+    let mut frac_div: u32 = 1;
 
-    let time = iter.next();
+    for c in str {
+        match c {
+            b'0'...b'9' => {
+                let n = (c - b'0') as u32;
 
-    match time {
-        Some(t) => println!("time: {}", str::from_utf8(t).unwrap()),
-        _ => println!("time is invalid"),
+                if frac_flag == false {
+                    num = num * 10 + n;
+                } else {
+                    frac = frac * 10 + n;
+                    frac_div *= 10;
+                }
+            },
+            b'.' => {
+                if frac_flag == true {
+                    return None;
+                }
+
+                frac_flag = true;
+            },
+            _ => return None,
+        }
     }
 
-    let lat = iter.next();
+    Some((num as f32) + (frac as f32) / (frac_div as f32))
+}
 
-    match lat {
-        Some(l) => println!("lat: {}", str::from_utf8(l).unwrap()),
-        _ => println!("lat isn't available "),
+fn ascii_dec_to_u32(str: &[u8]) -> Option<u32>
+{
+    let mut num: u32 = 0;
+
+     for c in str {
+        match c {
+            b'0'...b'9' => {
+                num = num * 10 + (c - b'0') as u32;
+            },
+            _ => return None,
+        }
     }
 
-    let _lat_n = iter.next(); //skip N
-    let lon = iter.next();
+    Some(num)
+}
 
-    match lon {
-        Some(l) => println!("lon: {}", str::from_utf8(l).unwrap()),
-        _ => println!("lon isn't available "),
+impl Gga {
+    pub fn new(msg: &[u8]) -> Option<Gga> {
+        let mut gga = Gga {
+            time: None,
+            lat: None,
+            lon: None,
+            fix_quality: None,
+            satellites: None,
+            hdop: None,
+            altitude: None,
+            geoid: None,
+        };
+
+        let mut iter = msg.split(|num| *num == b',');
+
+        match iter.next() {
+            Some(time) => gga.time = ascii_dec_to_u32(time),
+            _ => return None,
+        }
+
+        match iter.next() {
+            Some(lat) => gga.lat = ascii_to_f32(lat),
+            _ => return None,
+        }
+
+        let _lat_n = iter.next(); //skip N
+
+        match iter.next() {
+            Some(lon) =>  gga.lon = ascii_to_f32(lon),
+            _ => return None,
+        }
+
+        let _lon_e = iter.next(); //skip E
+
+        match iter.next() {
+            Some(fix_quality) => gga.fix_quality = ascii_dec_to_u32(fix_quality),
+            _ => return None,
+        }
+
+        match iter.next() {
+            Some(satellites) => gga.satellites = ascii_dec_to_u32(satellites),
+            _ => return None,
+        }
+
+        match iter.next() {
+            Some(hdop) => gga.hdop = ascii_to_f32(hdop),
+            _ => return None,
+        }
+
+        match iter.next() {
+            Some(altitude) => gga.altitude = ascii_to_f32(altitude),
+            _ => return None,
+        }
+
+        match iter.next() { // skip M
+            Some(_) => {  },
+            _ => println!("Must be 'M'"),
+        }
+
+        match iter.next() {
+            Some(geoid) => gga.geoid = ascii_to_f32(geoid),
+            _ => return None,
+        }
+
+        let _geoid_m = iter.next(); // skip M
+        println!("{:#?}", gga);
+        
+        Some(gga)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ascii_to_f32_test() {
+        assert_eq!(ascii_to_f32(b"34.056"), Some(34.056));
+        assert_eq!(ascii_to_f32(b"50.7"), Some(50.7));
+        assert_eq!(ascii_to_f32(b"50"), Some(50.0));
+        assert_eq!(ascii_to_f32(b"5m0"), None);
+        assert_eq!(ascii_to_f32(b"+7"), None);
+        assert_eq!(ascii_to_f32(b"-7.43"), None);
+        assert_eq!(ascii_to_f32(b"56.43.5"), None);
     }
 
-    let _lon_e = iter.next(); //skip E
-
-    let fix_quality= iter.next();
-
-    match fix_quality {
-        Some(f) => println!("fix quality: {}", str::from_utf8(f).unwrap()),
-        _ => println!("fix quality isn't available "),
+    #[test]
+    fn ascii_dec_to_u32_test() {
+        assert_eq!(ascii_dec_to_u32(b"34"), Some(34));
+        assert_eq!(ascii_dec_to_u32(b"50"), Some(50));
+        assert_eq!(ascii_dec_to_u32(b"0"), Some(0));
+        assert_eq!(ascii_dec_to_u32(b"5m0"), None);
+        assert_eq!(ascii_dec_to_u32(b"7.0"), None);
+        assert_eq!(ascii_dec_to_u32(b"56.43"), None);
+        assert_eq!(ascii_dec_to_u32(b"56.43.5"), None);
     }
-
-    let num_of_satellites= iter.next();
-
-    match num_of_satellites {
-        Some(n) => println!("number of satellites: {}", str::from_utf8(n).unwrap()),
-        _ => println!("number of satellites isn't available "),
-    }
-
-    let hdop = iter.next();
-
-    match hdop {
-        Some(h) => println!("hdop: {}", str::from_utf8(h).unwrap()),
-        _ => println!("hdop isn't available "),
-    }
-
-    let altitude = iter.next();
-
-    match altitude {
-        Some(a) => println!("altitude: {}", str::from_utf8(a).unwrap()),
-        _ => println!("altitude isn't available "),
-    }
-
-    let _altitude_m = iter.next(); // skip M
-
-    let geoid = iter.next();
-
-    match geoid {
-        Some(g) => println!("geoid: {}", str::from_utf8(g).unwrap()),
-        _ => println!("geoid isn't available "),
-    }
-
-    let _geoid_m = iter.next(); // skip M
-    //println!("{}", str::from_utf8(iter.next().unwrap()).unwrap());
 }

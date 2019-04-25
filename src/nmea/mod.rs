@@ -2,26 +2,6 @@ mod talker;
 mod sentence;
 mod gga;
 
-
-/*
-fn ascii_dec_char_to_u32(data: &[u8]) -> Option<u32> 
-{
-    if data.len() == 0 {
-        return None;
-    }
-
-    let mut res: u32 = 0;
-
-    for &n in data {
-        if (n < '0' as u8) || (n > '9' as u8) {
-            return None;
-        }
-
-        res = res * 10 + (n as u32) - ('0' as u32);
-    }
-    return Some(res);
-}
-*/
 fn ascii_hex_char_to_u32(data: &[u8]) -> Option<u32>
 {
     if data.len() == 0 {
@@ -32,9 +12,9 @@ fn ascii_hex_char_to_u32(data: &[u8]) -> Option<u32>
 
     for &n in data {
         let m = match n {
-            b'0'...b'9' => n - b'0', // '0'..'9'
-            b'A'...b'F' => n - b'A', // 'A'..'F'
-            b'a'...b'f' => n - b'a', // 'a'..'f'
+            b'0'...b'9' => n - b'0',
+            b'A'...b'F' => n - b'A',
+            b'a'...b'f' => n - b'a',
             _ => return None,
         };
 
@@ -121,31 +101,6 @@ fn msg_skip_msg_type(msg: &[u8]) -> Option<(&[u8], sentence::SentenceType)>
         None => return None,
     }
 }
-/*
-struct Splitter<'a> {
-    data: &'a[u8],
-    delim: u8,
-}
-
-impl <'a> Splitter<'a> {
-    fn new(data: &'a[u8], delim: u8) -> My {
-        My { data: data, delim: delim}
-    }
-
-    fn next(&mut self) -> Option<&[u8]> {
-        for i in 0..self.data.len() {
-            if self.data[i] == self.delim {
-                let res = Some(&self.data[0..i]);
-                self.data = &self.data[(i + 1)..];
-                return res;
-            }
-        }
-
-        return None;
-    }
-}
-*/
-
 
 pub fn parse_msg(msg: &[u8]) -> bool {
     let msg = match msg_skip_header(msg) {
@@ -199,10 +154,12 @@ pub fn parse_msg(msg: &[u8]) -> bool {
     let msg = &msg[1..];
 
     match msg_type {
-        sentence::SentenceType::GGA => gga::parse_gga(msg),
+        sentence::SentenceType::GGA => {
+            gga::Gga::new(msg).unwrap();
+        },
         _ => println!("not implemented"),
     }
-
+    
     println!("{}", str::from_utf8(msg).unwrap());
     return true;
 }
