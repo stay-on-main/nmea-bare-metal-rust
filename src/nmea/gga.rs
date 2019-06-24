@@ -138,9 +138,7 @@ impl Gga {
             _ => return None,
         }
 
-        let _geoid_m = iter.next(); // skip M
-        println!("{:#?}", gga);
-        
+        let _geoid_m = iter.next();
         Some(gga)
     }
 }

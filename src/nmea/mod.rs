@@ -2,6 +2,11 @@ mod talker;
 mod sentence;
 mod gga;
 
+#[derive(Debug)]
+pub enum NmeaMsg {
+    MsgGga(gga::Gga),
+}
+
 fn ascii_hex_char_to_u32(data: &[u8]) -> Option<u32>
 {
     if data.len() == 0 {
@@ -22,8 +27,6 @@ fn ascii_hex_char_to_u32(data: &[u8]) -> Option<u32>
     }
     return Some(res);
 }
-
-use std::str;
 
 fn do_checksum(msg: &[u8]) -> Option<u8> {
     let mut checksum = 0u8;
@@ -102,64 +105,67 @@ fn msg_skip_msg_type(msg: &[u8]) -> Option<(&[u8], sentence::SentenceType)>
     }
 }
 
-pub fn parse_msg(msg: &[u8]) -> bool {
+pub fn parse_msg(msg: &[u8]) -> Option<NmeaMsg> {
     let msg = match msg_skip_header(msg) {
         Some(m) => m,
-        None => return false,
+        None => return None,
     };
 
     let msg = match msg_skip_termination_chars(msg) {
         Some(m) => m,
-        None => return false,
+        None => return None,
     };
 
     let (msg, checksum) = match msg_skip_checksum(msg) {
         Some((m, c)) => (m, c),
-        None => return false,
+        None => return None,
     };
 
     let calc_checksum = match do_checksum(&msg) {
         Some(checksum) => checksum,
-        None => return false,
+        None => return None,
     };
 
     if calc_checksum != (checksum as u8) {
-        return false;
+        return None;
     }
 
     println!("crc form msg: {}, calculated crc: {}", checksum, calc_checksum);
 
     let (msg, talker) = match msg_skip_talker(&msg) {
         Some((m, t)) => (m, t),
-        None => return false,
+        None => return None,
     };
 
     println!("{:#?}", talker);
 
     let (msg, msg_type) = match msg_skip_msg_type(&msg) {
         Some((m, t)) => (m, t),
-        None => return false,
+        None => return None,
     };
 
     println!("{:#?}", msg_type);
 
     if msg.len() < 1 {
-        return false;
+        return None;
     }
 
     if msg[0] != b',' {
-        return false;
+        return None;
     }
 
     let msg = &msg[1..];
 
     match msg_type {
         sentence::SentenceType::GGA => {
-            gga::Gga::new(msg).unwrap();
+            match gga::Gga::new(msg) {
+                Some(msg) => return Some(NmeaMsg::MsgGga(msg)),
+                None => return None,
+            }
         },
-        _ => println!("not implemented"),
+        _ =>  {
+            println!("not implemented");
+            return None;
+        }
     }
-    
-    println!("{}", str::from_utf8(msg).unwrap());
-    return true;
 }
